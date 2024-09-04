@@ -8,8 +8,8 @@
       show-select
     >
       <template v-slot:item.action="{ item }">
-        <v-btn color="red" small @click="unsaveProduct(item.id)">
-          Delete from Saved
+        <v-btn color="white" small @click="unsaveProduct(item.id)">
+          <v-icon>mdi-star</v-icon>
         </v-btn>
       </template>
     </v-data-table>

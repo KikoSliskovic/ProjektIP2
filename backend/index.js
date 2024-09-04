@@ -50,7 +50,6 @@ app.post('/api/products', (req, res) => {
   });
 });
 
-
 // GET endpoint to fetch all products
 app.get('/api/products', (req, res) => {
   db.all('SELECT * FROM products WHERE deleted = 0', (err, rows) => {
@@ -70,8 +69,6 @@ app.get('/api/saved-products', (req, res) => {
     res.json(rows);
   });
 });
-
-
 
 // POST endpoint to save a product (mark as saved)
 app.post('/api/products/:id/save', (req, res) => {
@@ -144,6 +141,35 @@ app.get('/api/trash', (req, res) => {
     res.json(rows);
   });
 });
+
+// PUT endpoint to update a product
+app.put('/api/products/:id', (req, res) => {
+  const id = req.params.id;
+  const { name, category, sku, variant, price, status } = req.body;
+
+  // Check if all required fields are provided
+  if (!name || !category || !sku || price == null) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  const sql = `
+    UPDATE products
+    SET name = ?, category = ?, sku = ?, variant = ?, price = ?, status = ?
+    WHERE id = ?
+  `;
+  const params = [name, category, sku, variant, price, status, id];
+
+  db.run(sql, params, function(err) {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.status(200).json({ id, name, category, sku, variant, price, status });
+  });
+});
+
 
 // Close the database when the server stops
 process.on('SIGINT', () => {

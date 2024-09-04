@@ -9,7 +9,7 @@
     >
       <template v-slot:item.action="{ item }">
         <v-btn @click="deleteProduct(item.id)" color="red" small>
-          Delete Permanently
+          <v-icon>mdi-trash-can</v-icon>
         </v-btn>
       </template>
     </v-data-table>

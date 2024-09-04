@@ -13,32 +13,30 @@
       </v-col>
     </v-row>
 
-    <!-- Table Headers -->
-   
-
     <!-- Products Table -->
     <v-container> 
       <v-data-table
-      v-model="selected"
-      :items="items"
-      :headers="headers"
-      item-key="id"
-      show-select
-    >
-      <template v-slot:item.action="{ item }">
-        <v-btn @click="deleteProduct(item.id)" color="red" small>
-          Delete
-        </v-btn>
-        <v-btn 
-          :color="item.starred ? 'white' : ''"
-          small 
-          style="margin-left: 8px;"
-          @click="toggleStar(item)"
-        >
-          <v-icon>{{ item.starred ? 'mdi-star' : 'mdi-star-outline' }}</v-icon>
-        </v-btn>
-      </template>
-    </v-data-table>
+        v-model="selected"
+        :items="items"
+        :headers="headers"
+        item-key="id"
+        show-select
+      >
+        <template v-slot:item.action="{ item }">
+          <v-btn 
+            :color="item.starred ? 'white' : ''"
+            small 
+            style="margin-right: 10px;" @click="toggleStar(item)">
+            <v-icon>{{ item.starred ? 'mdi-star' : 'mdi-star-outline' }}</v-icon>
+          </v-btn>
+          <v-btn @click="editProduct(item)" color="" small style="margin-right: 10px;">
+            <v-icon>mdi-pencil</v-icon>
+          </v-btn>
+          <v-btn @click="deleteProduct(item.id)" color="red" small>
+            <v-icon>mdi-trash-can</v-icon>
+          </v-btn>
+        </template>
+      </v-data-table>
     </v-container>
 
     <!-- Dialog for Adding a New Product -->
@@ -64,6 +62,30 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- Dialog for Editing a Product -->
+    <v-dialog v-model="editDialog" max-width="500px">
+      <v-card>
+        <v-card-title>
+          <span class="headline">Edit Product</span>
+        </v-card-title>
+        <v-card-subtitle>
+          <v-form ref="form">
+            <v-text-field v-model="currentProduct.name" label="Brand" required></v-text-field>
+            <v-text-field v-model="currentProduct.category" label="Model" required></v-text-field>
+            <v-text-field v-model="currentProduct.sku" label="Code" required></v-text-field>
+            <v-text-field v-model="currentProduct.variant" label="Variant"></v-text-field>
+            <v-text-field v-model="currentProduct.price" label="Price" type="number" required></v-text-field>
+            <v-select v-model="currentProduct.status" :items="['Active', 'Inactive']" label="Status"></v-select>
+          </v-form>
+        </v-card-subtitle>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" @click="updateProduct">Update</v-btn>
+          <v-btn @click="editDialog = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </div>
 </template>
 
@@ -72,6 +94,7 @@ export default {
   data() {
     return {
       dialog: false,
+      editDialog: false,
       selected: [],
       items: [],
       headers: [
@@ -90,7 +113,8 @@ export default {
         variant: '',
         price: '',
         status: 'Active'
-      }
+      },
+      currentProduct: {}
     }
   },
 
@@ -149,19 +173,48 @@ export default {
       }
     },
 
+    async editProduct(product) {
+      this.currentProduct = { ...product };
+      this.editDialog = true;
+    },
+
+    async updateProduct() {
+      try {
+        const response = await fetch(`http://localhost:3000/api/products/${this.currentProduct.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(this.currentProduct)
+        });
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        // Fetch updated list of products
+        await this.fetchProducts();
+        this.editDialog = false;
+      } catch (error) {
+        console.error('Error updating product:', error);
+      }
+    },
+
     async toggleStar(item) {
       item.starred = !item.starred;
 
-      if (item.starred) {
-        // Save product to the saved_products table
-        await fetch(`http://localhost:3000/api/products/${item.id}/save`, {
-          method: 'POST'
-        });
-      } else {
-        // Remove product from the saved_products table
-        await fetch(`http://localhost:3000/api/products/${item.id}/unsave`, {
-          method: 'DELETE'
-        });
+      try {
+        if (item.starred) {
+          // Save product to the saved_products table
+          await fetch(`http://localhost:3000/api/products/${item.id}/save`, {
+            method: 'POST'
+          });
+        } else {
+          // Remove product from the saved_products table
+          await fetch(`http://localhost:3000/api/products/${item.id}/unsave`, {
+            method: 'DELETE'
+          });
+        }
+      } catch (error) {
+        console.error('Error toggling star:', error);
       }
     },
 
@@ -174,8 +227,8 @@ export default {
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
-        // Remove the product from the current list (as it's moved to trash)
-        this.items = this.items.filter(item => item.id !== id);
+        // Fetch updated list of products
+        await this.fetchProducts();
       } catch (error) {
         console.error('Error moving product to trash:', error);
       }
